@@ -11,6 +11,11 @@ namespace BonDriver_Manager
 {
 	class Program
 	{
+		/// <summary>
+		/// TODO: 
+		/// 1. 加载Main方法时加载BonDriverSrv
+		/// </summary>
+		/// <param name="args"></param>
 		static void Main(string[] args)
 		{
 			Console.Title = name + ' ' + ver;
@@ -30,6 +35,7 @@ namespace BonDriver_Manager
 				tuner_counter++;
 			}
 			tunerReader.Close();
+			BonDriver_EpgTimerSrv bonDriver_EpgTimerSrv = new BonDriver_EpgTimerSrv("./EpgTimerSrv.ini");
 		}
 
 		/// <summary>
@@ -123,14 +129,168 @@ namespace BonDriver_Manager
 	}
 
 	/// <summary>
+	/// EpgTimerSrv的BonDriver调用类，用于控制顺序以及搜台等等
+	/// </summary>
+	class BonDriver_EpgTimerSrv
+	{
+		public static int BonDriverCount = 0;
+		public BonDriver_EpgTimerSrv(string EpgTimerSrvFilePath)
+		{
+			//读取EpgtimerSrv.ini
+		}
+		~BonDriver_EpgTimerSrv()
+        {
+
+        }
+		/// <summary>
+		/// BonDriver的物理文件名
+		/// </summary>
+		string fileName;
+		/// <summary>
+		/// 录制调用的排序，从0起记
+		/// </summary>
+		int index;
+		/// <summary>
+		/// 是否在刷新EPG时使用该BonDriver
+		/// </summary>
+		bool epg = false;
+		/// <summary>
+		/// BonDriver内含的Tuner数量，默认为1
+		/// </summary>
+		short count = 1;
+		/// <summary>
+		/// 按大区划分的区域归属，关东=0，关西=1，名古屋=2，地方台=3
+		/// </summary>
+		int regionArea;
+		/// <summary>
+		/// 按大区划分后BonDriver的排序
+		/// </summary>
+		int indexArea;
+		/// <summary>
+		/// BonDriver启用状态
+		/// </summary>
+		bool enabled;
+		/// <summary>
+		/// 链表上一个元素指针域
+		/// </summary>
+		BonDriver_EpgTimerSrv previous;
+		/// <summary>
+		/// 链表下一个元素指针域
+		/// </summary>
+		BonDriver_EpgTimerSrv next;
+		/// <summary>
+		/// 当前BonDriverSrv所对应的BonDriverDLL
+		/// </summary>
+		BonDriverDLL driverDLL;
+		/// <summary>
+		/// 移动BonDriver次序
+		/// TODO: 
+		/// 1. 追加地区排序
+		/// </summary>
+		/// <param name="bonDriver_EpgTimerSrv">目标BonDriver</param>
+		/// <param name="index">目标位置</param>
+		/// <returns></returns>
+		public static bool Move(BonDriver_EpgTimerSrv bonDriver_EpgTimerSrv, int index)
+		{
+			//将当前位置指针域清空
+			if (bonDriver_EpgTimerSrv.next != null)
+			{
+				bonDriver_EpgTimerSrv.previous.next = bonDriver_EpgTimerSrv.next;
+				bonDriver_EpgTimerSrv.next.previous = bonDriver_EpgTimerSrv.previous;
+            }
+            else
+            {
+				bonDriver_EpgTimerSrv.previous.next = null;
+			}
+			if (index > bonDriver_EpgTimerSrv.index)
+            {
+				BonDriver_EpgTimerSrv b = bonDriver_EpgTimerSrv.next;
+				//将移动区间内BonDriver的index减一
+				while (b.index <= index && b.next != null)
+				{
+					b.index--;
+					b = b.next;
+				}
+				//当b.next不为空时，将bonDriver_EpgTimerSrv与链表后一个元素连接
+				if (b.next != null)
+				{
+					b.next.previous = bonDriver_EpgTimerSrv;
+					bonDriver_EpgTimerSrv.next = b.next;
+				}
+				//当b.next为空时，将bonDriver_EpgTimerSrv作为链表最后一个元素
+				else
+				{
+					bonDriver_EpgTimerSrv.next = null;
+				}
+				//将bonDriver_EpgTimerSrv与其之前的元素连接
+				b.next = bonDriver_EpgTimerSrv;
+				bonDriver_EpgTimerSrv.previous = b;
+				//bonDriver_EpgTimerSrv的index设置为前一个元素index+1
+				bonDriver_EpgTimerSrv.index = b.index + 1;
+            }
+            else
+            {
+				BonDriver_EpgTimerSrv b = bonDriver_EpgTimerSrv.previous;
+				//将移动区间内BonDriver的index减一
+				while (b.index >= index && b.previous != null)
+				{
+					b.index++;
+					b = b.previous;
+				}
+				//当b.previous不为空时，将bonDriver_EpgTimerSrv与链表后一个元素连接
+				if (b.previous != null)
+				{
+					b.previous.next = bonDriver_EpgTimerSrv;
+					bonDriver_EpgTimerSrv.previous = b.previous;
+				}
+				//当b.previous为空时，将bonDriver_EpgTimerSrv作为链表第一个元素
+				else
+				{
+					bonDriver_EpgTimerSrv.previous = null;
+				}
+				//将bonDriver_EpgTimerSrv与其之后的元素连接
+				b.previous = bonDriver_EpgTimerSrv;
+				bonDriver_EpgTimerSrv.next = b;
+				//bonDriver_EpgTimerSrv的index设置为后一个元素index-1
+				bonDriver_EpgTimerSrv.index = b.index - 1;
+			}
+			return true;
+		}
+		public static bool Delete(BonDriver_EpgTimerSrv bonDriver_EpgTimerSrv)
+        {
+			//当前为最后一个元素
+			if (bonDriver_EpgTimerSrv.next != null)
+			{
+				bonDriver_EpgTimerSrv.previous.next = bonDriver_EpgTimerSrv.next;
+				bonDriver_EpgTimerSrv.next.previous = bonDriver_EpgTimerSrv.previous;
+				bonDriver_EpgTimerSrv = null;
+				return true;
+			}
+			//当前不为最后一个元素
+			else
+			{
+				bonDriver_EpgTimerSrv.previous.next = null;
+				return true;
+			}
+		}
+	}
+	/// <summary>
 	/// BonDriverDLL类
 	/// </summary>
 	class BonDriverDLL
 	{
 		/// <summary>
+		/// 当前BonDriverDLL的文件名
+		/// </summary>
+		string fileName;
+		/// <summary>
 		/// 地区
 		/// </summary>
 		string region;
+		/// <summary>
+		/// 序号
+		/// </summary>
+		short index;
 		/// <summary>
 		/// 卡型（例：PT3）
 		/// </summary>
@@ -138,15 +298,15 @@ namespace BonDriver_Manager
 		/// <summary>
 		/// 卡型序号
 		/// </summary>
-		int tunerIndex;
+		short tunerIndex;
 		/// <summary>
 		/// 卫星指示器（False=地面波，True=卫星）
 		/// </summary>
 		bool sa;
 		/// <summary>
-		/// 序号
+		/// 卡型端口号
 		/// </summary>
-		short index;
+		short saPort;
 		/// <summary>
 		/// 机主IP地址
 		/// </summary>
@@ -155,6 +315,10 @@ namespace BonDriver_Manager
 		/// TunerPath
 		/// </summary>
 		string tunerPath;
+		/// <summary>
+		/// BonDriverDLL关联的ChSet4.txt信息
+		/// </summary>
+		List<ChSet4> chSet4s;
 		/// <summary>
 		/// 生成BonDriver物理DLL
 		/// </summary>
@@ -228,37 +392,20 @@ namespace BonDriver_Manager
 	}
 
 	/// <summary>
-	/// EpgTimerSrv的BonDriver调用类，用于控制顺序以及搜台等等
+	/// 频道ChSet4信息
 	/// </summary>
-	class BonDriver_EpgTimerSrv
-	{
+	class ChSet4
+    {
 		/// <summary>
-		/// BonDriver的物理文件名
+		/// 频道名
 		/// </summary>
-		string fileName;
+		string channelName;
 		/// <summary>
-		/// 录制调用的排序
+		/// 所属网络
 		/// </summary>
-		int index;
-		/// <summary>
-		/// 是否在刷新EPG时使用该BonDriver
-		/// </summary>
-		bool epg = false;
-		/// <summary>
-		/// BonDriver内含的Tuner数量，默认为1
-		/// </summary>
-		short count = 1;
-		/// <summary>
-		/// 按大区划分的区域归属，关东=0，关西=1，名古屋=2，地方台=3
-		/// </summary>
-		int regionArea;
-		/// <summary>
-		/// 按大区划分后BonDriver的排序
-		/// </summary>
-		int indexArea;
-		/// <summary>
-		/// BonDriver启用状态
-		/// </summary>
-		bool enabled;
-	}
+		string networkName;
+		short sid;
+		short tsid;
+		short onid;
+    }
 }
