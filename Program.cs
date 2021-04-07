@@ -69,7 +69,7 @@ namespace BonDriver_Manager
 			bonDriver_EpgTimerSrvs.Sort((l, r) => l.priority.CompareTo(r.priority));
 			foreach (BonDriver_EpgTimerSrv b_Srv in bonDriver_EpgTimerSrvs)
 			{
-				Console.Write(b_Srv.ToString());
+				//Console.Write(b_Srv.ToString());
 				try
 				{
 					StreamReader bonDLLReader = new StreamReader("./BonDriver/" + b_Srv.fileName + ".ini");
@@ -101,18 +101,27 @@ namespace BonDriver_Manager
 						}
 						bonDriverDLL.saPort = Convert.ToInt16(tunerpath.Split('/')[3]);
 						bonDriverDLLs.Add(bonDriverDLL);
-						Console.WriteLine(bonDriverDLL.ToString());
+						BonDriverDLL.BonDriverCount++;
+						//Console.WriteLine(bonDriverDLL.ToString());
 					}
 					bonDLLReader.Close();
 				}
 				catch
 				{
 					Console.BackgroundColor = ConsoleColor.Red;
+					Console.ForegroundColor = ConsoleColor.Yellow;
 					Console.WriteLine("./BonDriver/" + b_Srv.fileName + ".ini 文件不存在！");
 					Console.ResetColor();
 				}
 			}
-			Console.WriteLine("总BonDriver数量：" + bonDriver_EpgTimerSrvs.Count);
+			Console.WriteLine("总BonDriverSrv数量：" + BonDriver_EpgTimerSrv.BonDriverCount + " 总BonDriverDLL数量：" + BonDriverDLL.BonDriverCount);
+			if (BonDriver_EpgTimerSrv.BonDriverCount != BonDriverDLL.BonDriverCount)
+            {
+				Console.BackgroundColor = ConsoleColor.Red;
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("总BonDriverSrv数量不等于BonDriverDLL数量，请检查配置异常。");
+				Console.ResetColor();
+			}
 			Console.ReadLine();
 		}
 
@@ -210,6 +219,9 @@ namespace BonDriver_Manager
 	/// </summary>
 	class BonDriver_EpgTimerSrv
 	{
+		/// <summary>
+		/// BonDriverSrv总量
+		/// </summary>
 		public static int BonDriverCount = 0;
 		public BonDriver_EpgTimerSrv()
 		{
@@ -270,6 +282,10 @@ namespace BonDriver_Manager
 	/// </summary>
 	class BonDriverDLL
 	{
+		/// <summary>
+		/// BonDriverDLL总量
+		/// </summary>
+		public static int BonDriverCount = 0;
 		/// <summary>
 		/// 当前BonDriverDLL的文件名
 		/// </summary>
