@@ -12,8 +12,6 @@ namespace BonDriver_Manager
 	class Program
 	{
 		/// <summary>
-		/// TODO: 
-		/// 1. 加载Main方法时加载BonDriverSrv
 		/// </summary>
 		/// <param name="args"></param>
 		static void Main(string[] args)
@@ -35,7 +33,87 @@ namespace BonDriver_Manager
 				tuner_counter++;
 			}
 			tunerReader.Close();
-			BonDriver_EpgTimerSrv bonDriver_EpgTimerSrv = new BonDriver_EpgTimerSrv("./EpgTimerSrv.ini");
+			List<BonDriver_EpgTimerSrv> bonDriver_EpgTimerSrvs = new List<BonDriver_EpgTimerSrv>();
+			List<BonDriverDLL> bonDriverDLLs = new List<BonDriverDLL>();
+			StreamReader srvReader = new StreamReader(@"EpgTimerSrv.ini");
+			while ((line = srvReader.ReadLine()) != null)
+			{
+				if (line.IndexOf("[BonDriver_") < 0)
+				{
+					continue;
+				}
+				else
+				{
+					BonDriver_EpgTimerSrv.BonDriverCount++;
+					BonDriver_EpgTimerSrv b_Srv = new BonDriver_EpgTimerSrv();
+					b_Srv.fileName = line.Replace("[", "").Replace("]", "");
+					string count_string = srvReader.ReadLine();
+					string getepg_string = srvReader.ReadLine();
+					string epgcount_string = srvReader.ReadLine();
+					string priority = srvReader.ReadLine();
+					b_Srv.count = Convert.ToInt16(count_string.Split('=')[1]);
+					if (Convert.ToInt16(getepg_string.Split('=')[1]) == 0)
+					{
+						b_Srv.epg = false;
+					}
+					else
+					{
+						b_Srv.epg = true;
+					}
+					b_Srv.priority = Convert.ToInt32(priority.Split('=')[1]);
+					b_Srv.enabled = true;
+					bonDriver_EpgTimerSrvs.Add(b_Srv);
+				}
+			}
+			srvReader.Close();
+			bonDriver_EpgTimerSrvs.Sort((l, r) => l.priority.CompareTo(r.priority));
+			foreach (BonDriver_EpgTimerSrv b_Srv in bonDriver_EpgTimerSrvs)
+			{
+				Console.Write(b_Srv.ToString());
+				try
+				{
+					StreamReader bonDLLReader = new StreamReader("./BonDriver/" + b_Srv.fileName + ".ini");
+					while ((line = bonDLLReader.ReadLine()) != null)
+					{
+						string ip_string = null;
+						string tunerpath = null;
+						if (line.IndexOf("Address") >= 0)
+						{
+							ip_string = line.Split('=')[1].Replace(" ", "").Replace("\"", "");
+							tunerpath = bonDLLReader.ReadLine().Split('=')[1].Replace(" ", "").Replace("\"", "");
+                        }
+                        else
+                        {
+							continue;
+                        }
+						BonDriverDLL bonDriverDLL = new BonDriverDLL();
+						bonDriverDLL.fileName = b_Srv.fileName;
+						bonDriverDLL.ip = ip_string;
+						bonDriverDLL.tuner = tunerpath.Split('/')[0];
+						bonDriverDLL.tunerIndex = Convert.ToInt16(tunerpath.Split('/')[1]);
+						if (tunerpath.Split('/')[2].Equals("S"))
+						{
+							bonDriverDLL.sa = true;
+						}
+						else
+						{
+							bonDriverDLL.sa = false;
+						}
+						bonDriverDLL.saPort = Convert.ToInt16(tunerpath.Split('/')[3]);
+						bonDriverDLLs.Add(bonDriverDLL);
+						Console.WriteLine(bonDriverDLL.ToString());
+					}
+					bonDLLReader.Close();
+				}
+				catch
+				{
+					Console.BackgroundColor = ConsoleColor.Red;
+					Console.WriteLine("./BonDriver/" + b_Srv.fileName + ".ini 文件不存在！");
+					Console.ResetColor();
+				}
+			}
+			Console.WriteLine("总BonDriver数量：" + bonDriver_EpgTimerSrvs.Count);
+			Console.ReadLine();
 		}
 
 		/// <summary>
@@ -125,7 +203,6 @@ namespace BonDriver_Manager
 		public static int tuner_counter = 0;
 		const int num_tunerTypes = 128;
 		public static string[,] tunerTypes = new string[num_tunerTypes, 3];//二维数组，每行保存机型名以及其支持的T/S数量
-
 	}
 
 	/// <summary>
@@ -134,144 +211,58 @@ namespace BonDriver_Manager
 	class BonDriver_EpgTimerSrv
 	{
 		public static int BonDriverCount = 0;
-		public BonDriver_EpgTimerSrv(string EpgTimerSrvFilePath)
+		public BonDriver_EpgTimerSrv()
 		{
-			//读取EpgtimerSrv.ini
+			//构造BonDriver_EpgTimerSrv
 		}
-		~BonDriver_EpgTimerSrv()
-        {
-
-        }
 		/// <summary>
 		/// BonDriver的物理文件名
 		/// </summary>
-		string fileName;
+		public string fileName;
 		/// <summary>
 		/// 录制调用的排序，从0起记
 		/// </summary>
-		int index;
+		public int priority;
 		/// <summary>
 		/// 是否在刷新EPG时使用该BonDriver
 		/// </summary>
-		bool epg = false;
+		public bool epg = false;
 		/// <summary>
 		/// BonDriver内含的Tuner数量，默认为1
 		/// </summary>
-		short count = 1;
+		public short count = 1;
 		/// <summary>
 		/// 按大区划分的区域归属，关东=0，关西=1，名古屋=2，地方台=3
 		/// </summary>
-		int regionArea;
+		public int regionArea;
 		/// <summary>
 		/// 按大区划分后BonDriver的排序
 		/// </summary>
-		int indexArea;
+		public int indexArea;
 		/// <summary>
 		/// BonDriver启用状态
 		/// </summary>
-		bool enabled;
+		public bool enabled;
 		/// <summary>
-		/// 链表上一个元素指针域
+		/// 重载ToString方法，用于后续生成ini文件
 		/// </summary>
-		BonDriver_EpgTimerSrv previous;
-		/// <summary>
-		/// 链表下一个元素指针域
-		/// </summary>
-		BonDriver_EpgTimerSrv next;
-		/// <summary>
-		/// 当前BonDriverSrv所对应的BonDriverDLL
-		/// </summary>
-		BonDriverDLL driverDLL;
-		/// <summary>
-		/// 移动BonDriver次序
-		/// TODO: 
-		/// 1. 追加地区排序
-		/// </summary>
-		/// <param name="bonDriver_EpgTimerSrv">目标BonDriver</param>
-		/// <param name="index">目标位置</param>
-		/// <returns></returns>
-		public static bool Move(BonDriver_EpgTimerSrv bonDriver_EpgTimerSrv, int index)
+		/// <returns>适配了ini格式的字符串</returns>
+		public override string ToString()
 		{
-			//将当前位置指针域清空
-			if (bonDriver_EpgTimerSrv.next != null)
+			string getepg = null;
+			if (this.epg)
 			{
-				bonDriver_EpgTimerSrv.previous.next = bonDriver_EpgTimerSrv.next;
-				bonDriver_EpgTimerSrv.next.previous = bonDriver_EpgTimerSrv.previous;
-            }
-            else
-            {
-				bonDriver_EpgTimerSrv.previous.next = null;
+				getepg = "GetEPG=1";
 			}
-			if (index > bonDriver_EpgTimerSrv.index)
-            {
-				BonDriver_EpgTimerSrv b = bonDriver_EpgTimerSrv.next;
-				//将移动区间内BonDriver的index减一
-				while (b.index <= index && b.next != null)
-				{
-					b.index--;
-					b = b.next;
-				}
-				//当b.next不为空时，将bonDriver_EpgTimerSrv与链表后一个元素连接
-				if (b.next != null)
-				{
-					b.next.previous = bonDriver_EpgTimerSrv;
-					bonDriver_EpgTimerSrv.next = b.next;
-				}
-				//当b.next为空时，将bonDriver_EpgTimerSrv作为链表最后一个元素
-				else
-				{
-					bonDriver_EpgTimerSrv.next = null;
-				}
-				//将bonDriver_EpgTimerSrv与其之前的元素连接
-				b.next = bonDriver_EpgTimerSrv;
-				bonDriver_EpgTimerSrv.previous = b;
-				//bonDriver_EpgTimerSrv的index设置为前一个元素index+1
-				bonDriver_EpgTimerSrv.index = b.index + 1;
-            }
-            else
-            {
-				BonDriver_EpgTimerSrv b = bonDriver_EpgTimerSrv.previous;
-				//将移动区间内BonDriver的index减一
-				while (b.index >= index && b.previous != null)
-				{
-					b.index++;
-					b = b.previous;
-				}
-				//当b.previous不为空时，将bonDriver_EpgTimerSrv与链表后一个元素连接
-				if (b.previous != null)
-				{
-					b.previous.next = bonDriver_EpgTimerSrv;
-					bonDriver_EpgTimerSrv.previous = b.previous;
-				}
-				//当b.previous为空时，将bonDriver_EpgTimerSrv作为链表第一个元素
-				else
-				{
-					bonDriver_EpgTimerSrv.previous = null;
-				}
-				//将bonDriver_EpgTimerSrv与其之后的元素连接
-				b.previous = bonDriver_EpgTimerSrv;
-				bonDriver_EpgTimerSrv.next = b;
-				//bonDriver_EpgTimerSrv的index设置为后一个元素index-1
-				bonDriver_EpgTimerSrv.index = b.index - 1;
-			}
-			return true;
-		}
-		public static bool Delete(BonDriver_EpgTimerSrv bonDriver_EpgTimerSrv)
-        {
-			//当前为最后一个元素
-			if (bonDriver_EpgTimerSrv.next != null)
-			{
-				bonDriver_EpgTimerSrv.previous.next = bonDriver_EpgTimerSrv.next;
-				bonDriver_EpgTimerSrv.next.previous = bonDriver_EpgTimerSrv.previous;
-				bonDriver_EpgTimerSrv = null;
-				return true;
-			}
-			//当前不为最后一个元素
 			else
 			{
-				bonDriver_EpgTimerSrv.previous.next = null;
-				return true;
+				getepg = "GetEPG=0";
 			}
+			return "[" + this.fileName + "]\r\n"
+				+ "Count=" + this.count.ToString() + "\r\n"
+				+ getepg + "\r\n"
+				+ "EPGCount=0" + "\r\n"
+				+ "Priority=" + this.priority.ToString() + "\r\n";
 		}
 	}
 	/// <summary>
@@ -282,35 +273,35 @@ namespace BonDriver_Manager
 		/// <summary>
 		/// 当前BonDriverDLL的文件名
 		/// </summary>
-		string fileName;
+		public string fileName;
 		/// <summary>
 		/// 地区
 		/// </summary>
-		string region;
+		public string region;
 		/// <summary>
 		/// 序号
 		/// </summary>
-		short index;
+		public short index;
 		/// <summary>
 		/// 卡型（例：PT3）
 		/// </summary>
-		string tuner;
+		public string tuner;
 		/// <summary>
 		/// 卡型序号
 		/// </summary>
-		short tunerIndex;
+		public short tunerIndex;
 		/// <summary>
 		/// 卫星指示器（False=地面波，True=卫星）
 		/// </summary>
-		bool sa;
+		public bool sa;
 		/// <summary>
 		/// 卡型端口号
 		/// </summary>
-		short saPort;
+		public short saPort;
 		/// <summary>
 		/// 机主IP地址
 		/// </summary>
-		string ip;
+		public string ip;
 		/// <summary>
 		/// TunerPath
 		/// </summary>
@@ -318,7 +309,21 @@ namespace BonDriver_Manager
 		/// <summary>
 		/// BonDriverDLL关联的ChSet4.txt信息
 		/// </summary>
-		List<ChSet4> chSet4s;
+		public List<ChSet4> chSet4s;
+		public override string ToString()
+		{
+			string sa = null;
+			if (this.sa)
+			{
+				sa = "S";
+			}
+			else
+			{
+				sa = "T";
+			}
+			return "Address = \"" + this.ip + "\"\r\n"
+				+ "TunerPath = \"" + this.tuner + "/" + this.tunerIndex + "/" + sa + "/" + this.saPort + "\"";
+		}
 		/// <summary>
 		/// 生成BonDriver物理DLL
 		/// </summary>
@@ -329,10 +334,10 @@ namespace BonDriver_Manager
 		/// <param name="index">序号</param>
 		/// <param name="ip">机主IP地址</param>
 		/// <returns></returns>
-		int[] GenBonDriver(string region, string tuner, int tunerIndex, bool sa, short index, string ip)
+		public int[] GenBonDriver(string region, string tuner, int tunerIndex, bool sa, short index, string ip)
 		{
 			int tCount = 0, sCount = 0;
-			for(int i = 0; i< Program.tuner_counter; i++)
+			for (int i = 0; i < Program.tuner_counter; i++)
 			{
 				if (tuner.Equals(Program.tunerTypes[i, 0]))
 				{
@@ -343,7 +348,7 @@ namespace BonDriver_Manager
 			}
 			string pLocalFilePath = "./BonDriver_Spinel_test.dll";//要复制的文件路径
 			string pSaveFilePath;
-			for (int t = 0;t < tCount; t++)
+			for (int t = 0; t < tCount; t++)
 			{
 				pSaveFilePath = "./BonDriver/BonDriver_" + region + "_" + tuner + "_" + index + "_T_" + t + ".dll";//指定存储的路径
 				if (File.Exists(pLocalFilePath))//必须判断要复制的文件是否存在
@@ -395,7 +400,7 @@ namespace BonDriver_Manager
 	/// 频道ChSet4信息
 	/// </summary>
 	class ChSet4
-    {
+	{
 		/// <summary>
 		/// 频道名
 		/// </summary>
@@ -407,5 +412,5 @@ namespace BonDriver_Manager
 		short sid;
 		short tsid;
 		short onid;
-    }
+	}
 }
