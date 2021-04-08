@@ -12,6 +12,7 @@ namespace BonDriver_Manager
 	class Program
 	{
 		/// <summary>
+		/// 程序入口
 		/// </summary>
 		/// <param name="args"></param>
 		static void Main(string[] args)
@@ -41,7 +42,7 @@ namespace BonDriver_Manager
 			}
 			try
 			{
-				StreamReader srvReader = new StreamReader(@"EpgTimerSrv.ini");
+				StreamReader srvReader = new StreamReader("EpgTimerSrv.ini");
 				while ((line = srvReader.ReadLine()) != null)
 				{
 					if (line.IndexOf("[BonDriver_") < 0)
@@ -55,11 +56,11 @@ namespace BonDriver_Manager
 						string count_string = srvReader.ReadLine();
 						string getepg_string = srvReader.ReadLine();
 						string epgcount_string = srvReader.ReadLine();
-						int priority = Convert.ToInt32(srvReader.ReadLine());
-						short count = Convert.ToInt16(count_string.Split('=')[1]);
+						int priority = Convert.ToInt32(srvReader.ReadLine().Split('=')[1]);
+						ushort count = (ushort)Convert.ToInt32(count_string.Split('=')[1]);
 						bool enabled = true;
 						bool epg;
-						if (Convert.ToInt16(getepg_string.Split('=')[1]) == 0)
+						if (Convert.ToInt32(getepg_string.Split('=')[1]) == 0)
 						{
 							epg = false;
 						}
@@ -67,7 +68,7 @@ namespace BonDriver_Manager
 						{
 							epg = true;
 						}
-						BonDriverSrv b_Srv = new BonDriverSrv(line.Replace("[", "").Replace("]", ""), priority, epg, count, enabled, null);
+						BonDriverSrv b_Srv = new BonDriverSrv(fileName, priority, epg, count, enabled, null);
 						if (b_Srv.priority > BonDriverSrv.PriorityMax)
 						{
 							BonDriverSrv.PriorityMax++;
@@ -77,9 +78,9 @@ namespace BonDriver_Manager
 				}
 				srvReader.Close();
 			}
-			catch
+			catch (Exception ex)
 			{
-				Console.WriteLine("EpgTimerSrv.ini读取失败，请检查文件状态");
+				Console.WriteLine("EpgTimerSrv.ini读取失败，请检查文件状态\r\n" + ex.ToString());
 			}
 			bonDriverSrvs.Sort((l, r) => l.priority.CompareTo(r.priority));
 			foreach (BonDriverSrv bonDiverSrv in bonDriverSrvs)
@@ -109,11 +110,10 @@ namespace BonDriver_Manager
 						{
 							sa = false;
 						}
-						BonDriverDLL bonDriverDLL = new BonDriverDLL(bonDiverSrv.fileName, bonDiverSrv.fileName.Split('_')[1], Convert.ToInt16(bonDiverSrv.fileName.Replace("Spinel_","").Split('_')[1]), tunerpath.Split('/')[0], Convert.ToInt16(tunerpath.Split('/')[1]), sa, Convert.ToInt16(tunerpath.Split('/')[3]), ip_string, tunerpath);
+						BonDriverDLL bonDriverDLL = new BonDriverDLL(bonDiverSrv.fileName, bonDiverSrv.fileName.Split('_')[1], (ushort)Convert.ToInt32(bonDiverSrv.fileName.Replace("Spinel_", "").Split('_')[3]), tunerpath.Split('/')[0], (ushort)Convert.ToInt32(tunerpath.Split('/')[1]), sa, (ushort)Convert.ToInt32(tunerpath.Split('/')[3]), ip_string, tunerpath);
 						bonDiverSrv.driverDLL = bonDriverDLL;
 						bonDriverDLLs.Add(bonDriverDLL);
 						BonDriverDLL.BonDriverCount++;
-						//Console.WriteLine(bonDriverDLL.ToString());
 					}
 					bonDLLReader.Close();
 				}
@@ -122,7 +122,6 @@ namespace BonDriver_Manager
 					Console.BackgroundColor = ConsoleColor.Red;
 					Console.ForegroundColor = ConsoleColor.Yellow;
 					Console.WriteLine("./BonDriver/" + bonDiverSrv.fileName + ".ini 文件不存在！");
-					bonDiverSrv.fileName = "NULL";
 					Console.ResetColor();
 				}
 			}
@@ -135,13 +134,12 @@ namespace BonDriver_Manager
 				Console.ResetColor();
 			}
 			Console.ReadLine();
-            while (true)
-            {
+			while (true)
+			{
 				Console.Clear();
 				LoadMenu();
 			}
 		}
-
 		/// <summary>
 		/// 重新启动程序，旧窗口并不会关闭
 		/// </summary>
@@ -158,41 +156,73 @@ namespace BonDriver_Manager
 		{
 			Console.WriteLine(name + ' ' + ver);
 			Console.WriteLine("01.\t遍历查看所有BonDriver信息");
-			Console.WriteLine("02.\t添加新的BonDriver信息");
+			Console.WriteLine("02.\t添加新的BonDriver信息（此操作将覆盖旧有同BonDriver，请谨慎使用）");
 			Console.WriteLine("03.\t清理无效的BonDriverSrv");
 			char key = Convert.ToChar(Console.ReadLine());
-            switch (key)
-            {
-                case '1':
-                    {
-                        DumpBonDriverInfo_LoadMenu01();
-                        break;
-                    }
+			switch (key)
+			{
+				case '1':
+					{
+						DumpBonDriverInfo_LoadMenu01();
+						break;
+					}
 
-                case '2':
-                    {
-                        AddBonDriver_LoadMenu02();
-                        break;
-                    }
+				case '2':
+					{
+						AddBonDriver_LoadMenu02();
+						break;
+					}
 
-                case '3':
-                    {
-                        RemoveBonDriverSrv_LoadMenu03();
-                        break;
-                    }
-            }
-        }
+				case '3':
+					{
+						RemoveBonDriverSrv_LoadMenu03();
+						break;
+					}
+			}
+		}
 		/// <summary>
 		/// 主菜单第一项，遍历查看所有BonDriver信息
 		/// </summary>
 		public static void DumpBonDriverInfo_LoadMenu01()
 		{
-			foreach(BonDriverSrv b in bonDriverSrvs)
+			int i = 0;
+			foreach (BonDriverSrv b in bonDriverSrvs)
 			{
+				Console.WriteLine("========BonDriverDLL: " + i.ToString() + "========");
 				Console.WriteLine(b.ToString());
-				Console.WriteLine(b.driverDLL.ToString());
+				if (b.driverDLL == null)
+				{
+					Console.WriteLine("[BonDriverDLL实体不存在]");
+				}
+				else
+				{
+					Console.WriteLine("====IP信息====");
+					Console.WriteLine(b.driverDLL.ToString());
+                    if (b.driverDLL.chSet4 != null)
+                    {
+						Console.WriteLine("==BonDriverDLL实体频道列表==", b.driverDLL.chSet4.chSet4FileName);
+						ushort channelCount = 0;
+						foreach(Channel c in b.driverDLL.chSet4.channels)
+                        {
+                            if (c.show)
+                            {
+								Console.WriteLine(c.ToString());
+							}
+							channelCount++;
+						}
+						Console.WriteLine("BonDriver: " + b.fileName + "共有 " + channelCount + " 个频道");
+                    }
+                    else
+                    {
+						Console.WriteLine("BonDriverDLL未搜台");
+					}
+				}
+				i++;
+				Console.ReadLine();
 			}
 			Console.WriteLine("操作已完成01");
+			Console.ReadLine();
+			Console.Clear();
 		}
 		/// <summary>
 		/// 主菜单第二项，添加新的BonDriver信息
@@ -211,16 +241,18 @@ namespace BonDriver_Manager
 			Console.Write("请输入BonDriver卡型：");
 			string newTuner = Console.ReadLine();
 			Console.Write("请输入BonDriver同卡型的排序（PT3/2/T/1中的2）：");
-			short newTunerIndex = Convert.ToInt16(Console.ReadLine());
+			ushort newTunerIndex = (ushort)Convert.ToInt32(Console.ReadLine());
 			Console.Write("请输入BonDriver的地址，需要带端口号（127.0.0.1:12121）：");
 			string newIP = Console.ReadLine();
-			foreach(BonDriverDLL b in BonDriverDLL.GenBonDriver(newRegion, Convert.ToInt16(newIndex), newTuner, newTunerIndex, true, newIP))
+			foreach (BonDriverDLL b in BonDriverDLL.GenBonDriver(newRegion, (ushort)Convert.ToInt32(newIndex), newTuner, newTunerIndex, true, newIP))
 			{
 				BonDriverSrv b_Srv = new BonDriverSrv(b.fileName, BonDriverSrv.PriorityMax, false, 1, true, b);
 				BonDriverSrv.PriorityMax++;
 				bonDriverSrvs.Add(b_Srv);
 			}
 			Console.WriteLine("操作已完成02");
+			Console.ReadLine();
+			Console.Clear();
 		}
 		/// <summary>
 		/// 主菜单第三项，清理无效的BonDriverSrv
@@ -230,36 +262,17 @@ namespace BonDriver_Manager
 		/// </summary>
 		public static void RemoveBonDriverSrv_LoadMenu03()
 		{
-			int i = 0;
-			foreach (BonDriverSrv b in bonDriverSrvs)
-			{
-				if (b.driverDLL == null)
-				{
-					Console.BackgroundColor = ConsoleColor.Yellow;
-					Console.ForegroundColor = ConsoleColor.White;
-					Console.WriteLine("[REMOVE]" + b.ToString());
-					foreach (BonDriverSrv bs in bonDriverSrvs)
-                    {
-						if (bs.priority > b.priority)
-                        {
-							bs.priority--;
-                        }
-                        else
-                        {
-							continue;
-                        }
-                    }
-					bonDriverSrvs.Remove(b);
-					Console.ResetColor();
-					i++;
-					BonDriverSrv.BonDriverCount--;
-				}
-				else
-				{
-					continue;
-				}
-			}
-			Console.WriteLine("本次共计移除了 " + i + "个条目");
+			ushort i = 0;
+			int countB = bonDriverSrvs.Count;
+            bool IsDLLNull(BonDriverSrv b) { return b.driverDLL == null; }
+            bonDriverSrvs.RemoveAll(IsDLLNull);
+			int countA = bonDriverSrvs.Count;
+			foreach(BonDriverSrv b in bonDriverSrvs)
+            {
+				b.priority = i;
+				i++;
+            }
+			Console.WriteLine("本次共计移除了 " + (countB - countA) + "个条目");
 			Console.WriteLine("操作已完成03");
 			Console.ReadLine();
 			Console.Clear();

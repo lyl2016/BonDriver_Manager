@@ -22,8 +22,8 @@ namespace BonDriver_Manager
 		/// <summary>
 		/// 构造函数
 		/// </summary>
-		public BonDriverDLL(string fileName, string region, short index, string tuner, short tunerIndex, bool sa, short saPort, string ip, string tunerPath, List<ChSet4> chSet4s = null)
-        {
+		public BonDriverDLL(string fileName, string region, ushort index, string tuner, ushort tunerIndex, bool sa, ushort saPort, string ip, string tunerPath, ChSet4 chSet4 = null)
+		{
 			this.fileName = fileName;
 			this.region = region;
 			this.index = index;
@@ -33,8 +33,58 @@ namespace BonDriver_Manager
 			this.saPort = saPort;
 			this.ip = ip;
 			this.tunerPath = tunerPath;
-			this.chSet4s = chSet4s;
-        }
+			List<Channel> channels = new List<Channel>();
+			string saString;
+			if (!sa)
+			{
+				saString = "T";
+			}
+			else
+			{
+				saString = "S";
+			}
+			string chSet4FileName = fileName.Replace(".dll", "(Spinel：") + this.tuner + "_" + this.tunerIndex + "／" + saString + this.saPort + ").ChSet4.txt";
+			try
+			{
+				string line;
+				StreamReader chSet4Reader = new StreamReader(@"./Setting/" + chSet4FileName, Encoding.GetEncoding("Shift-JIS"));
+				while ((line = chSet4Reader.ReadLine()) != null)
+				{
+					string channel = line.Split('\t')[0];
+					string channelName = line.Split('\t')[1];
+					string networkName = line.Split('\t')[2];
+					ushort tunerSpace = (ushort)Convert.ToInt32(line.Split('\t')[3]);
+					ushort channelIndex = (ushort)Convert.ToInt32(line.Split('\t')[4]);
+					ushort sid = (ushort)Convert.ToInt32(line.Split('\t')[7]);
+					ushort onid = (ushort)Convert.ToInt32(line.Split('\t')[5]);
+					ushort tsid = (ushort)Convert.ToInt32(line.Split('\t')[6]);
+					ushort type = (ushort)Convert.ToInt32(line.Split('\t')[8]);
+					bool show;
+					if (Convert.ToInt32(line.Split('\t')[10]) == 1)
+					{
+						show = true;
+					}
+					else
+					{
+						show = false;
+					}
+					channels.Add(new Channel(channel, channelName, networkName, tunerSpace, channelIndex, sid, onid, tsid, type, show));
+				}
+				chSet4Reader.Close();
+			}
+			catch(Exception ex)
+			{
+#if DEBUG
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("BonDriver: " + this.fileName + "暂未搜台\r\n" + ex.Message);
+#else
+				Console.WriteLine("BonDriver: " + this.fileName + "\r\n暂未搜台");
+#endif
+				Console.ResetColor();
+			}
+			ChSet4 c = new ChSet4(chSet4FileName, channels);
+			this.chSet4 = c;
+		}
 		/// <summary>
 		/// 当前BonDriverDLL的文件名
 		/// </summary>
@@ -46,7 +96,7 @@ namespace BonDriver_Manager
 		/// <summary>
 		/// 序号
 		/// </summary>
-		public short index;
+		public ushort index;
 		/// <summary>
 		/// 卡型（例：PT3）
 		/// </summary>
@@ -54,7 +104,7 @@ namespace BonDriver_Manager
 		/// <summary>
 		/// 卡型序号
 		/// </summary>
-		public short tunerIndex;
+		public ushort tunerIndex;
 		/// <summary>
 		/// 卫星指示器（False=地面波，True=卫星）
 		/// </summary>
@@ -62,7 +112,7 @@ namespace BonDriver_Manager
 		/// <summary>
 		/// 卡型端口号
 		/// </summary>
-		public short saPort;
+		public ushort saPort;
 		/// <summary>
 		/// 机主IP地址
 		/// </summary>
@@ -74,7 +124,7 @@ namespace BonDriver_Manager
 		/// <summary>
 		/// BonDriverDLL关联的ChSet4.txt信息
 		/// </summary>
-		public List<ChSet4> chSet4s;
+		public ChSet4 chSet4;
 		/// <summary>
 		/// 重载ToString()方法，将输出格式化为BonDriverDLL配套ini的Address行以及TunerPath行
 		/// </summary>
@@ -103,7 +153,7 @@ namespace BonDriver_Manager
 		/// <param name="sa">卫星指示器</param>
 		/// <param name="ip">机主IP地址，包括端口号</param>
 		/// <returns></returns>
-		public static List<BonDriverDLL> GenBonDriver(string region, short index, string tuner, short tunerIndex, bool sa, string ip)
+		public static List<BonDriverDLL> GenBonDriver(string region, ushort index, string tuner, ushort tunerIndex, bool sa, string ip)
 		{
 			List<BonDriverDLL> returnValue = new List<BonDriverDLL>();
 			int tCount = 0, sCount = 0;
@@ -118,7 +168,7 @@ namespace BonDriver_Manager
 			}
 			string pLocalFilePath = "./BonDriver/BonDriver_Spinel_test.dll";//要复制的文件路径
 			string pSaveFilePath;
-			for (short t = 0; t < tCount; t++)
+			for (ushort t = 0; t < tCount; t++)
 			{
 				pSaveFilePath = "./BonDriver/BonDriver_" + region + "_" + tuner + "_" + index + "_T_" + t + ".dll";//指定存储的路径
 				if (File.Exists(pLocalFilePath))//必须判断要复制的文件是否存在
@@ -143,7 +193,7 @@ namespace BonDriver_Manager
 			}
 			if (sa)
 			{
-				for (short s = 0; s < sCount; s++)
+				for (ushort s = 0; s < sCount; s++)
 				{
 					pSaveFilePath = "./BonDriver/BonDriver_" + region + "_" + tuner + "_" + index + "_S_" + s + ".dll";//指定存储的路径
 					if (File.Exists(pLocalFilePath))//必须判断要复制的文件是否存在

@@ -24,7 +24,7 @@ namespace BonDriver_Manager
 		/// <param name="count"></param>
 		/// <param name="enabled"></param>
 		/// <param name="driverDLL">可留NULL</param>
-		public BonDriverSrv(string fileName, int priority, bool epg, short count, bool enabled, BonDriverDLL driverDLL)
+		public BonDriverSrv(string fileName, int priority, bool epg, ushort count, bool enabled, BonDriverDLL driverDLL)
 		{
 			this.fileName = fileName;
 			this.priority = priority;
@@ -52,7 +52,7 @@ namespace BonDriver_Manager
 		/// <summary>
 		/// BonDriver内含的Tuner数量，默认为1
 		/// </summary>
-		public short count = 1;
+		public ushort count = 1;
 		/// <summary>
 		/// 按大区划分的区域归属，关东=0，关西=1，名古屋=2，地方台=3
 		/// </summary>
@@ -88,7 +88,7 @@ namespace BonDriver_Manager
 				+ "Count=" + this.count.ToString() + "\r\n"
 				+ getepg + "\r\n"
 				+ "EPGCount=0" + "\r\n"
-				+ "Priority=" + this.priority.ToString() + "\r\n";
+				+ "Priority=" + this.priority.ToString();
 		}
 	}
 }
