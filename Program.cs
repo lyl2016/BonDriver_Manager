@@ -39,9 +39,6 @@ namespace BonDriver_Manager
 			{
 				Console.WriteLine("tuner.txt读取失败，请检查文件状态");
 			}
-			
-			List<BonDriverSrv> bonDriverSrvs = new List<BonDriverSrv>();
-			List<BonDriverDLL> bonDriverDLLs = new List<BonDriverDLL>();
 			try
 			{
 				StreamReader srvReader = new StreamReader(@"EpgTimerSrv.ini");
@@ -54,23 +51,27 @@ namespace BonDriver_Manager
 					else
 					{
 						BonDriverSrv.BonDriverCount++;
-						BonDriverSrv b_Srv = new BonDriverSrv();
-						b_Srv.fileName = line.Replace("[", "").Replace("]", "");
+						string fileName = line.Replace("[", "").Replace("]", "");
 						string count_string = srvReader.ReadLine();
 						string getepg_string = srvReader.ReadLine();
 						string epgcount_string = srvReader.ReadLine();
-						string priority = srvReader.ReadLine();
-						b_Srv.count = Convert.ToInt16(count_string.Split('=')[1]);
+						int priority = Convert.ToInt32(srvReader.ReadLine());
+						short count = Convert.ToInt16(count_string.Split('=')[1]);
+						bool enabled = true;
+						bool epg;
 						if (Convert.ToInt16(getepg_string.Split('=')[1]) == 0)
 						{
-							b_Srv.epg = false;
+							epg = false;
 						}
 						else
 						{
-							b_Srv.epg = true;
+							epg = true;
 						}
-						b_Srv.priority = Convert.ToInt32(priority.Split('=')[1]);
-						b_Srv.enabled = true;
+						BonDriverSrv b_Srv = new BonDriverSrv(line.Replace("[", "").Replace("]", ""), priority, epg, count, enabled, null);
+						if (b_Srv.priority > BonDriverSrv.PriorityMax)
+                        {
+							BonDriverSrv.PriorityMax++;
+                        }
 						bonDriverSrvs.Add(b_Srv);
 					}
 				}
@@ -80,7 +81,6 @@ namespace BonDriver_Manager
 			{
 				Console.WriteLine("EpgTimerSrv.ini读取失败，请检查文件状态");
 			}
-			
 			bonDriverSrvs.Sort((l, r) => l.priority.CompareTo(r.priority));
 			foreach (BonDriverSrv bonDiverSrv in bonDriverSrvs)
 			{
@@ -153,14 +153,46 @@ namespace BonDriver_Manager
 			rs.StartInfo.FileName = "BonDriver_Manager.exe";
 			rs.Start();
 		}
-
+		/// <summary>
+		/// 加载主菜单
+		/// </summary>
 		public static void LoadMenu()
 		{
 			Console.WriteLine("01.\t遍历查看所有BonDriver信息");
 			Console.WriteLine("02.\t添加新的BonDriver信息");
 			Console.WriteLine("03.\t清理无效的BonDriverSrv");
 		}
-
+		/// <summary>
+		/// 主菜单第一项，遍历查看所有BonDriver信息
+		/// </summary>
+		public static void DumpBonDriverInfo_LoadMenu01()
+        {
+			foreach(BonDriverSrv b in bonDriverSrvs)
+            {
+				Console.WriteLine(b.ToString());
+				Console.WriteLine(b.driverDLL.ToString());
+            }
+        }
+		/// <summary>
+		/// 主菜单第二项，添加新的BonDriver信息
+		/// 该函数由控制台输入信息，完成DLL新建的动作，并在Srvs中写入数据
+		/// TODO: 
+		/// 1. 完成EpgTimerSrv.ini信息写入
+		/// </summary>
+		public static void AddBonDriver_LoadMenu02()
+        {
+			string newRegion = Console.ReadLine();
+			string newIndex = Console.ReadLine();
+			string newTuner = Console.ReadLine();
+			short newTunerIndex = Convert.ToInt16(Console.ReadLine());
+			string newIP = Console.ReadLine();
+			foreach(BonDriverDLL b in BonDriverDLL.GenBonDriver(newRegion, Convert.ToInt16(newIndex), newTuner, newTunerIndex, true, newIP))
+            {
+				BonDriverSrv b_Srv = new BonDriverSrv(b.fileName, BonDriverSrv.PriorityMax, false, 1, true, b);
+				BonDriverSrv.PriorityMax++;
+				bonDriverSrvs.Add(b_Srv);
+            }
+        }
 		/// <summary>
 		/// 加载BonDriverDLL类相关操作菜单
 		/// </summary>
@@ -251,5 +283,7 @@ namespace BonDriver_Manager
 		public static int tuner_counter = 0;
 		const int num_tunerTypes = 128;
 		public static string[,] tunerTypes = new string[num_tunerTypes, 3];//二维数组，每行保存机型名以及其支持的T/S数量
+		public static List<BonDriverSrv> bonDriverSrvs = new List<BonDriverSrv>();
+		public static List<BonDriverDLL> bonDriverDLLs = new List<BonDriverDLL>();
 	}
 }

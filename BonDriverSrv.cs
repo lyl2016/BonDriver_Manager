@@ -8,6 +8,8 @@ namespace BonDriver_Manager
 {
 	/// <summary>
 	/// EpgTimerSrv的BonDriver调用类，用于控制顺序以及搜台等等
+	/// TODO: 
+	/// 1. 重写构造函数(OVER)
 	/// </summary>
 	class BonDriverSrv
 	{
@@ -15,9 +17,23 @@ namespace BonDriver_Manager
 		/// BonDriverSrv总量
 		/// </summary>
 		public static int BonDriverCount = 0;
-		public BonDriverSrv()
+		/// <summary>
+		/// 构造函数
+		/// </summary>
+		/// <param name="fileName"></param>
+		/// <param name="priority"></param>
+		/// <param name="epg"></param>
+		/// <param name="count"></param>
+		/// <param name="enabled"></param>
+		/// <param name="driverDLL">可留NULL</param>
+		public BonDriverSrv(string fileName, int priority, bool epg, short count, bool enabled, BonDriverDLL driverDLL)
 		{
-			//构造BonDriver_EpgTimerSrv
+			this.fileName = fileName;
+			this.priority = priority;
+			this.epg = epg;
+			this.count = count;
+			this.enabled = enabled;
+			this.driverDLL = driverDLL;
 		}
 		/// <summary>
 		/// BonDriver的物理文件名
@@ -27,6 +43,10 @@ namespace BonDriver_Manager
 		/// 录制调用的排序，从0起记
 		/// </summary>
 		public int priority;
+		/// <summary>
+		/// 排序当前最大值
+		/// </summary>
+		public static int PriorityMax;
 		/// <summary>
 		/// 是否在刷新EPG时使用该BonDriver
 		/// </summary>

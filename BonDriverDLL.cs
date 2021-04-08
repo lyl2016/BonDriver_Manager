@@ -10,12 +10,25 @@ using System.Threading.Tasks;
 /// </summary>
 namespace BonDriver_Manager
 {
-    class BonDriverDLL
-    {
+	/// <summary>
+	/// BonDriver物理DLL类
+	/// TODO: 
+	/// 1. 重写构造函数
+	/// </summary>
+	class BonDriverDLL
+	{
 		/// <summary>
 		/// BonDriverDLL总量
 		/// </summary>
 		public static int BonDriverCount = 0;
+		/// <summary>
+		/// TODO: 
+		/// 1. 重写构造函数
+		/// </summary>
+		public BonDriverDLL()
+        {
+
+        }
 		/// <summary>
 		/// 当前BonDriverDLL的文件名
 		/// </summary>
@@ -78,14 +91,15 @@ namespace BonDriver_Manager
 		/// 生成BonDriver物理DLL
 		/// </summary>
 		/// <param name="region">地区</param>
+		/// <param name="index">序号</param>
 		/// <param name="tuner">卡型</param>
 		/// <param name="tunerIndex">卡型序号</param>
 		/// <param name="sa">卫星指示器</param>
-		/// <param name="index">序号</param>
-		/// <param name="ip">机主IP地址</param>
+		/// <param name="ip">机主IP地址，包括端口号</param>
 		/// <returns></returns>
-		public static int[] GenBonDriver(string region, string tuner, int tunerIndex, bool sa, short index, string ip)
+		public static List<BonDriverDLL> GenBonDriver(string region, short index, string tuner, short tunerIndex, bool sa, string ip)
 		{
+			List<BonDriverDLL> returnValue = new List<BonDriverDLL>();
 			int tCount = 0, sCount = 0;
 			for (int i = 0; i < Program.tuner_counter; i++)
 			{
@@ -98,7 +112,7 @@ namespace BonDriver_Manager
 			}
 			string pLocalFilePath = "./BonDriver/BonDriver_Spinel_test.dll";//要复制的文件路径
 			string pSaveFilePath;
-			for (int t = 0; t < tCount; t++)
+			for (short t = 0; t < tCount; t++)
 			{
 				pSaveFilePath = "./BonDriver/BonDriver_" + region + "_" + tuner + "_" + index + "_T_" + t + ".dll";//指定存储的路径
 				if (File.Exists(pLocalFilePath))//必须判断要复制的文件是否存在
@@ -117,10 +131,22 @@ namespace BonDriver_Manager
 									"ConnectTimeoutSeconds = 10\r\n" +
 									"DesiredDescrambleControl = 2");
 				}
+				BonDriverDLL b = new BonDriverDLL();
+				b.fileName = "BonDriver_" + region + "_" + tuner + "_" + index + "_T_" + t + ".dll";
+				b.region = region;
+				b.index = index;
+				b.tuner = tuner;
+				b.tunerIndex = tunerIndex;
+				b.sa = false;
+				b.saPort = t;
+				b.ip = ip + ":48083";
+				b.tunerPath = tuner + "/" + tunerIndex + "/T/" + t;
+				returnValue.Add(b);
+				Program.bonDriverDLLs.Add(b);
 			}
 			if (sa)
 			{
-				for (int s = 0; s < sCount; s++)
+				for (short s = 0; s < sCount; s++)
 				{
 					pSaveFilePath = "./BonDriver/BonDriver_" + region + "_" + tuner + "_" + index + "_S_" + s + ".dll";//指定存储的路径
 					if (File.Exists(pLocalFilePath))//必须判断要复制的文件是否存在
@@ -139,16 +165,27 @@ namespace BonDriver_Manager
 										"ConnectTimeoutSeconds = 10\r\n" +
 										"DesiredDescrambleControl = 2");
 					}
+					BonDriverDLL b = new BonDriverDLL();
+					b.fileName = "BonDriver_" + region + "_" + tuner + "_" + index + "_S_" + s + ".dll";
+					b.region = region;
+					b.index = index;
+					b.tuner = tuner;
+					b.tunerIndex = tunerIndex;
+					b.sa = true;
+					b.saPort = s;
+					b.ip = ip + ":48083";
+					b.tunerPath = tuner + "/" + tunerIndex + "/S/" + s;
+					returnValue.Add(b);
+					Program.bonDriverDLLs.Add(b);
 				}
 			}
-			int[] returnValue = new int[2] { tCount, sCount };
 			return returnValue;
 		}
 		/// <summary>
 		/// 生成当前对象的BonDriverDLL文件，存放于./BonDriver/目录中
 		/// </summary>
 		/// <returns></returns>
-		public bool GenBonDriver()
+		public string GenBonDriver()
 		{
 			string pLocalFilePath = "./BonDriver/BonDriver_Spinel_test.dll";//要复制的文件路径
 			string pSaveFilePath;
@@ -175,7 +212,7 @@ namespace BonDriver_Manager
 								"ConnectTimeoutSeconds = 10\r\n" +
 								"DesiredDescrambleControl = 2");
 			}
-			return true;
+			return pSaveFilePath.Replace("./BonDriver/", "");
 		}
 	}
 }
