@@ -17,62 +17,77 @@ namespace BonDriver_Manager
 		static void Main(string[] args)
 		{
 			Console.Title = name + ' ' + ver;
-			Console.WriteLine(name + "\t" + ver);
 			//读取机型
 			string line;
-			StreamReader tunerReader = new StreamReader(@"tuner.txt");
-			while ((line = tunerReader.ReadLine()) != null)
+			try
 			{
-				//参数解析
-				string argu = line;
-				string[] sArray = argu.Split(',');
-				//System.Console.WriteLine(line);
-				tunerTypes[tuner_counter, 0] = sArray[0];
-				tunerTypes[tuner_counter, 1] = sArray[1];
-				tunerTypes[tuner_counter, 2] = sArray[2];
-				tuner_counter++;
-			}
-			tunerReader.Close();
-			List<BonDriver_EpgTimerSrv> bonDriver_EpgTimerSrvs = new List<BonDriver_EpgTimerSrv>();
-			List<BonDriverDLL> bonDriverDLLs = new List<BonDriverDLL>();
-			StreamReader srvReader = new StreamReader(@"EpgTimerSrv.ini");
-			while ((line = srvReader.ReadLine()) != null)
-			{
-				if (line.IndexOf("[BonDriver_") < 0)
+				StreamReader tunerReader = new StreamReader(@"tuner.txt");
+				while ((line = tunerReader.ReadLine()) != null)
 				{
-					continue;
+					//参数解析
+					string argu = line;
+					string[] sArray = argu.Split(',');
+					//System.Console.WriteLine(line);
+					tunerTypes[tuner_counter, 0] = sArray[0];
+					tunerTypes[tuner_counter, 1] = sArray[1];
+					tunerTypes[tuner_counter, 2] = sArray[2];
+					tuner_counter++;
 				}
-				else
+				tunerReader.Close();
+			}
+			catch
+			{
+				Console.WriteLine("tuner.txt读取失败，请检查文件状态");
+			}
+			
+			List<BonDriverSrv> bonDriverSrvs = new List<BonDriverSrv>();
+			List<BonDriverDLL> bonDriverDLLs = new List<BonDriverDLL>();
+			try
+			{
+				StreamReader srvReader = new StreamReader(@"EpgTimerSrv.ini");
+				while ((line = srvReader.ReadLine()) != null)
 				{
-					BonDriver_EpgTimerSrv.BonDriverCount++;
-					BonDriver_EpgTimerSrv b_Srv = new BonDriver_EpgTimerSrv();
-					b_Srv.fileName = line.Replace("[", "").Replace("]", "");
-					string count_string = srvReader.ReadLine();
-					string getepg_string = srvReader.ReadLine();
-					string epgcount_string = srvReader.ReadLine();
-					string priority = srvReader.ReadLine();
-					b_Srv.count = Convert.ToInt16(count_string.Split('=')[1]);
-					if (Convert.ToInt16(getepg_string.Split('=')[1]) == 0)
+					if (line.IndexOf("[BonDriver_") < 0)
 					{
-						b_Srv.epg = false;
+						continue;
 					}
 					else
 					{
-						b_Srv.epg = true;
+						BonDriverSrv.BonDriverCount++;
+						BonDriverSrv b_Srv = new BonDriverSrv();
+						b_Srv.fileName = line.Replace("[", "").Replace("]", "");
+						string count_string = srvReader.ReadLine();
+						string getepg_string = srvReader.ReadLine();
+						string epgcount_string = srvReader.ReadLine();
+						string priority = srvReader.ReadLine();
+						b_Srv.count = Convert.ToInt16(count_string.Split('=')[1]);
+						if (Convert.ToInt16(getepg_string.Split('=')[1]) == 0)
+						{
+							b_Srv.epg = false;
+						}
+						else
+						{
+							b_Srv.epg = true;
+						}
+						b_Srv.priority = Convert.ToInt32(priority.Split('=')[1]);
+						b_Srv.enabled = true;
+						bonDriverSrvs.Add(b_Srv);
 					}
-					b_Srv.priority = Convert.ToInt32(priority.Split('=')[1]);
-					b_Srv.enabled = true;
-					bonDriver_EpgTimerSrvs.Add(b_Srv);
 				}
+				srvReader.Close();
 			}
-			srvReader.Close();
-			bonDriver_EpgTimerSrvs.Sort((l, r) => l.priority.CompareTo(r.priority));
-			foreach (BonDriver_EpgTimerSrv b_Srv in bonDriver_EpgTimerSrvs)
+			catch
 			{
-				//Console.Write(b_Srv.ToString());
+				Console.WriteLine("EpgTimerSrv.ini读取失败，请检查文件状态");
+			}
+			
+			bonDriverSrvs.Sort((l, r) => l.priority.CompareTo(r.priority));
+			foreach (BonDriverSrv bonDiverSrv in bonDriverSrvs)
+			{
+				//Console.Write(bonDiverSrv.ToString());
 				try
 				{
-					StreamReader bonDLLReader = new StreamReader("./BonDriver/" + b_Srv.fileName + ".ini");
+					StreamReader bonDLLReader = new StreamReader("./BonDriver/" + bonDiverSrv.fileName + ".ini");
 					while ((line = bonDLLReader.ReadLine()) != null)
 					{
 						string ip_string = null;
@@ -81,13 +96,13 @@ namespace BonDriver_Manager
 						{
 							ip_string = line.Split('=')[1].Replace(" ", "").Replace("\"", "");
 							tunerpath = bonDLLReader.ReadLine().Split('=')[1].Replace(" ", "").Replace("\"", "");
-                        }
-                        else
-                        {
+						}
+						else
+						{
 							continue;
-                        }
+						}
 						BonDriverDLL bonDriverDLL = new BonDriverDLL();
-						bonDriverDLL.fileName = b_Srv.fileName;
+						bonDriverDLL.fileName = bonDiverSrv.fileName;
 						bonDriverDLL.ip = ip_string;
 						bonDriverDLL.tuner = tunerpath.Split('/')[0];
 						bonDriverDLL.tunerIndex = Convert.ToInt16(tunerpath.Split('/')[1]);
@@ -100,6 +115,7 @@ namespace BonDriver_Manager
 							bonDriverDLL.sa = false;
 						}
 						bonDriverDLL.saPort = Convert.ToInt16(tunerpath.Split('/')[3]);
+						bonDiverSrv.driverDLL = bonDriverDLL;
 						bonDriverDLLs.Add(bonDriverDLL);
 						BonDriverDLL.BonDriverCount++;
 						//Console.WriteLine(bonDriverDLL.ToString());
@@ -110,19 +126,22 @@ namespace BonDriver_Manager
 				{
 					Console.BackgroundColor = ConsoleColor.Red;
 					Console.ForegroundColor = ConsoleColor.Yellow;
-					Console.WriteLine("./BonDriver/" + b_Srv.fileName + ".ini 文件不存在！");
+					Console.WriteLine("./BonDriver/" + bonDiverSrv.fileName + ".ini 文件不存在！");
+					bonDiverSrv.fileName = "NULL";
 					Console.ResetColor();
 				}
 			}
-			Console.WriteLine("总BonDriverSrv数量：" + BonDriver_EpgTimerSrv.BonDriverCount + " 总BonDriverDLL数量：" + BonDriverDLL.BonDriverCount);
-			if (BonDriver_EpgTimerSrv.BonDriverCount != BonDriverDLL.BonDriverCount)
-            {
+			Console.WriteLine("总BonDriverSrv数量：" + BonDriverSrv.BonDriverCount + " 总BonDriverDLL数量：" + BonDriverDLL.BonDriverCount);
+			if (BonDriverSrv.BonDriverCount != BonDriverDLL.BonDriverCount)
+			{
 				Console.BackgroundColor = ConsoleColor.Red;
 				Console.ForegroundColor = ConsoleColor.Yellow;
 				Console.WriteLine("总BonDriverSrv数量不等于BonDriverDLL数量，请检查配置异常。");
 				Console.ResetColor();
 			}
 			Console.ReadLine();
+			Console.Clear();
+			Console.WriteLine(name + "\t" + ver);
 		}
 
 		/// <summary>
@@ -133,6 +152,26 @@ namespace BonDriver_Manager
 			var rs = new Process();
 			rs.StartInfo.FileName = "BonDriver_Manager.exe";
 			rs.Start();
+		}
+
+		public static void LoadMenu()
+		{
+			Console.WriteLine("01.\t遍历查看所有BonDriver信息");
+			Console.WriteLine("02.\t添加新的BonDriver信息");
+			Console.WriteLine("03.\t清理无效的BonDriverSrv");
+		}
+
+		/// <summary>
+		/// 加载BonDriverDLL类相关操作菜单
+		/// </summary>
+		/// <param name="b">待操作的BonD river DLL</param>
+		public static void LoadBonDriverControlMenu(BonDriverDLL b)
+		{
+			Console.WriteLine("00.\t新建BonDriver");
+			Console.WriteLine("01.\t编辑BonDriver_*.ini（IP以及TunerPath）");
+			Console.WriteLine("02.\t编辑EpgTimerSrv.ini（DLL排序以及EPG调用）");
+			Console.WriteLine("03.\t移动BonDriver使用顺序");
+			Console.WriteLine("04.\t删除BonDriver");
 		}
 
 #if DEBUG
@@ -217,13 +256,13 @@ namespace BonDriver_Manager
 	/// <summary>
 	/// EpgTimerSrv的BonDriver调用类，用于控制顺序以及搜台等等
 	/// </summary>
-	class BonDriver_EpgTimerSrv
+	class BonDriverSrv
 	{
 		/// <summary>
 		/// BonDriverSrv总量
 		/// </summary>
 		public static int BonDriverCount = 0;
-		public BonDriver_EpgTimerSrv()
+		public BonDriverSrv()
 		{
 			//构造BonDriver_EpgTimerSrv
 		}
@@ -255,6 +294,10 @@ namespace BonDriver_Manager
 		/// BonDriver启用状态
 		/// </summary>
 		public bool enabled;
+		/// <summary>
+		/// 当前BonDriverSrv对象对应的BonDriverDLL对象，可能为空
+		/// </summary>
+		public BonDriverDLL driverDLL;
 		/// <summary>
 		/// 重载ToString方法，用于后续生成ini文件
 		/// </summary>
@@ -326,6 +369,10 @@ namespace BonDriver_Manager
 		/// BonDriverDLL关联的ChSet4.txt信息
 		/// </summary>
 		public List<ChSet4> chSet4s;
+		/// <summary>
+		/// 重载ToString()方法，将输出格式化为BonDriverDLL配套ini的Address行以及TunerPath行
+		/// </summary>
+		/// <returns></returns>
 		public override string ToString()
 		{
 			string sa = null;
@@ -350,7 +397,7 @@ namespace BonDriver_Manager
 		/// <param name="index">序号</param>
 		/// <param name="ip">机主IP地址</param>
 		/// <returns></returns>
-		public int[] GenBonDriver(string region, string tuner, int tunerIndex, bool sa, short index, string ip)
+		public static int[] GenBonDriver(string region, string tuner, int tunerIndex, bool sa, short index, string ip)
 		{
 			int tCount = 0, sCount = 0;
 			for (int i = 0; i < Program.tuner_counter; i++)
@@ -362,7 +409,7 @@ namespace BonDriver_Manager
 					break;
 				}
 			}
-			string pLocalFilePath = "./BonDriver_Spinel_test.dll";//要复制的文件路径
+			string pLocalFilePath = "./BonDriver/BonDriver_Spinel_test.dll";//要复制的文件路径
 			string pSaveFilePath;
 			for (int t = 0; t < tCount; t++)
 			{
@@ -391,7 +438,7 @@ namespace BonDriver_Manager
 					pSaveFilePath = "./BonDriver/BonDriver_" + region + "_" + tuner + "_" + index + "_S_" + s + ".dll";//指定存储的路径
 					if (File.Exists(pLocalFilePath))//必须判断要复制的文件是否存在
 					{
-						File.Copy(pLocalFilePath, pSaveFilePath, true);//三个参数分别是源文件路径，存储路径，若存储路径有相同文件是否替换
+						File.Copy(pLocalFilePath, pSaveFilePath, false);//三个参数分别是源文件路径，存储路径，若存储路径有相同文件是否替换
 					}
 					string ini_path = pSaveFilePath + ".ini";
 					using (StreamWriter sw = new StreamWriter(ini_path))
@@ -409,6 +456,39 @@ namespace BonDriver_Manager
 			}
 			int[] returnValue = new int[2] { tCount, sCount };
 			return returnValue;
+		}
+		/// <summary>
+		/// 生成当前对象的BonDriverDLL文件，存放于./BonDriver/目录中
+		/// </summary>
+		/// <returns></returns>
+		public bool GenBonDriver()
+		{
+			string pLocalFilePath = "./BonDriver/BonDriver_Spinel_test.dll";//要复制的文件路径
+			string pSaveFilePath;
+			if (!this.sa)
+			{
+				pSaveFilePath = "./BonDriver/BonDriver_" + this.region + "_" + this.tuner + "_" + this.index + "_T_" + this.saPort + ".dll";//指定存储的路径
+			}
+			else
+			{
+				pSaveFilePath = "./BonDriver/BonDriver_" + this.region + "_" + this.tuner + "_" + this.index + "_S_" + this.saPort + ".dll";//指定存储的路径
+			}
+			if (File.Exists(pLocalFilePath))//必须判断要复制的文件是否存在
+			{
+				File.Copy(pLocalFilePath, pSaveFilePath, false);//三个参数分别是源文件路径，存储路径，若存储路径有相同文件是否替换
+			}
+			string ini_path = pSaveFilePath + ".ini";
+			using (StreamWriter sw = new StreamWriter(ini_path))
+			{
+				sw.WriteLine("[BonDriver_Spinel]\r\nIniVersion = 1");
+				sw.WriteLine(this.ToString());
+				sw.WriteLine("RequireExclusiveChannelControl = 0\r\n" +
+								"ForceTCPDataLinkMode = 1\r\n" +
+								"EnableHostProcessAliveCheck = 0\r\n" +
+								"ConnectTimeoutSeconds = 10\r\n" +
+								"DesiredDescrambleControl = 2");
+			}
+			return true;
 		}
 	}
 
