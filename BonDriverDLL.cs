@@ -12,8 +12,6 @@ namespace BonDriver_Manager
 {
 	/// <summary>
 	/// BonDriver物理DLL类
-	/// TODO: 
-	/// 1. 重写构造函数
 	/// </summary>
 	class BonDriverDLL
 	{
@@ -22,12 +20,20 @@ namespace BonDriver_Manager
 		/// </summary>
 		public static int BonDriverCount = 0;
 		/// <summary>
-		/// TODO: 
-		/// 1. 重写构造函数
+		/// 构造函数
 		/// </summary>
-		public BonDriverDLL()
+		public BonDriverDLL(string fileName, string region, short index, string tuner, short tunerIndex, bool sa, short saPort, string ip, string tunerPath, List<ChSet4> chSet4s = null)
         {
-
+			this.fileName = fileName;
+			this.region = region;
+			this.index = index;
+			this.tuner = tuner;
+			this.tunerIndex = tunerIndex;
+			this.sa = sa;
+			this.saPort = saPort;
+			this.ip = ip;
+			this.tunerPath = tunerPath;
+			this.chSet4s = chSet4s;
         }
 		/// <summary>
 		/// 当前BonDriverDLL的文件名
@@ -131,16 +137,7 @@ namespace BonDriver_Manager
 									"ConnectTimeoutSeconds = 10\r\n" +
 									"DesiredDescrambleControl = 2");
 				}
-				BonDriverDLL b = new BonDriverDLL();
-				b.fileName = "BonDriver_" + region + "_" + tuner + "_" + index + "_T_" + t + ".dll";
-				b.region = region;
-				b.index = index;
-				b.tuner = tuner;
-				b.tunerIndex = tunerIndex;
-				b.sa = false;
-				b.saPort = t;
-				b.ip = ip + ":48083";
-				b.tunerPath = tuner + "/" + tunerIndex + "/T/" + t;
+				BonDriverDLL b = new BonDriverDLL("BonDriver_" + region + "_" + tuner + "_" + index + "_T_" + t + ".dll", region, index, tuner, tunerIndex, false, t, ip + ":48083", tuner + "/" + tunerIndex + "/T/" + t);
 				returnValue.Add(b);
 				Program.bonDriverDLLs.Add(b);
 			}
@@ -165,16 +162,7 @@ namespace BonDriver_Manager
 										"ConnectTimeoutSeconds = 10\r\n" +
 										"DesiredDescrambleControl = 2");
 					}
-					BonDriverDLL b = new BonDriverDLL();
-					b.fileName = "BonDriver_" + region + "_" + tuner + "_" + index + "_S_" + s + ".dll";
-					b.region = region;
-					b.index = index;
-					b.tuner = tuner;
-					b.tunerIndex = tunerIndex;
-					b.sa = true;
-					b.saPort = s;
-					b.ip = ip + ":48083";
-					b.tunerPath = tuner + "/" + tunerIndex + "/S/" + s;
+					BonDriverDLL b = new BonDriverDLL("BonDriver_" + region + "_" + tuner + "_" + index + "_S_" + s + ".dll", region, index, tuner, tunerIndex, true, s, ip + ":48083", tuner + "/" + tunerIndex + "/T/" + s);
 					returnValue.Add(b);
 					Program.bonDriverDLLs.Add(b);
 				}

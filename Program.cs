@@ -101,20 +101,16 @@ namespace BonDriver_Manager
 						{
 							continue;
 						}
-						BonDriverDLL bonDriverDLL = new BonDriverDLL();
-						bonDriverDLL.fileName = bonDiverSrv.fileName;
-						bonDriverDLL.ip = ip_string;
-						bonDriverDLL.tuner = tunerpath.Split('/')[0];
-						bonDriverDLL.tunerIndex = Convert.ToInt16(tunerpath.Split('/')[1]);
+						bool sa = false;
 						if (tunerpath.Split('/')[2].Equals("S"))
 						{
-							bonDriverDLL.sa = true;
+							sa = true;
 						}
 						else
 						{
-							bonDriverDLL.sa = false;
+							sa = false;
 						}
-						bonDriverDLL.saPort = Convert.ToInt16(tunerpath.Split('/')[3]);
+						BonDriverDLL bonDriverDLL = new BonDriverDLL(bonDiverSrv.fileName, bonDiverSrv.fileName.Split('_')[1], Convert.ToInt16(bonDiverSrv.fileName.Replace("Spinel_","").Split('_')[1]), tunerpath.Split('/')[0], Convert.ToInt16(tunerpath.Split('/')[1]), sa, Convert.ToInt16(tunerpath.Split('/')[3]), ip_string, tunerpath);
 						bonDiverSrv.driverDLL = bonDriverDLL;
 						bonDriverDLLs.Add(bonDriverDLL);
 						BonDriverDLL.BonDriverCount++;

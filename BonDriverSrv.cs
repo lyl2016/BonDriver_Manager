@@ -8,8 +8,6 @@ namespace BonDriver_Manager
 {
 	/// <summary>
 	/// EpgTimerSrv的BonDriver调用类，用于控制顺序以及搜台等等
-	/// TODO: 
-	/// 1. 重写构造函数(OVER)
 	/// </summary>
 	class BonDriverSrv
 	{
