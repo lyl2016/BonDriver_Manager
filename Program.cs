@@ -143,7 +143,7 @@ namespace BonDriver_Manager
 		/// <summary>
 		/// 重新启动程序，旧窗口并不会关闭
 		/// </summary>
-		public static void Restart()
+		static void Restart()
 		{
 			var rs = new Process();
 			rs.StartInfo.FileName = "BonDriver_Manager.exe";
@@ -152,7 +152,7 @@ namespace BonDriver_Manager
 		/// <summary>
 		/// 加载主菜单
 		/// </summary>
-		public static void LoadMenu()
+		static void LoadMenu()
 		{
 			Console.WriteLine(name + ' ' + ver);
 			Console.WriteLine("01.\t遍历查看所有BonDriver信息");
@@ -175,7 +175,7 @@ namespace BonDriver_Manager
 
 				case '3':
 					{
-						RemoveBonDriverSrv_LoadMenu03();
+						RemoveUselessBonDriverSrv_LoadMenu03();
 						break;
 					}
 			}
@@ -183,42 +183,22 @@ namespace BonDriver_Manager
 		/// <summary>
 		/// 主菜单第一项，遍历查看所有BonDriver信息
 		/// </summary>
-		public static void DumpBonDriverInfo_LoadMenu01()
+		static void DumpBonDriverInfo_LoadMenu01()
 		{
-			int i = 0;
+			int i = -1;
 			foreach (BonDriverSrv b in bonDriverSrvs)
 			{
-				Console.WriteLine("========BonDriverDLL: " + i.ToString() + "========");
-				Console.WriteLine(b.ToString());
-				if (b.driverDLL == null)
-				{
-					Console.WriteLine("[BonDriverDLL实体不存在]");
-				}
-				else
-				{
-					Console.WriteLine("====IP信息====");
-					Console.WriteLine(b.driverDLL.ToString());
-                    if (b.driverDLL.chSet4 != null)
-                    {
-						Console.WriteLine("==BonDriverDLL实体频道列表==", b.driverDLL.chSet4.chSet4FileName);
-						ushort channelCount = 0;
-						foreach(Channel c in b.driverDLL.chSet4.channels)
-                        {
-                            if (c.show)
-                            {
-								Console.WriteLine(c.ToString());
-							}
-							channelCount++;
-						}
-						Console.WriteLine("BonDriver: " + b.fileName + "共有 " + channelCount + " 个频道");
-                    }
-                    else
-                    {
-						Console.WriteLine("BonDriverDLL未搜台");
-					}
-				}
 				i++;
+				Console.WriteLine("========BonDriverDLL: " + i.ToString() + "========");
+				ShowBonDriverInfo(b);
 				Console.ReadLine();
+			}
+			int BonDriverIndex = -1;
+			Console.Write("请输入你想要操作的BonDriver[0 - " + i + "]（输入负值以退出）：");
+			BonDriverIndex = Convert.ToInt32(Console.ReadLine());
+			if (BonDriverIndex >= 0 && BonDriverIndex <= i)
+			{
+				LoadBonDriverControlMenu(bonDriverSrvs[BonDriverIndex]);
 			}
 			Console.WriteLine("操作已完成01");
 			Console.ReadLine();
@@ -232,7 +212,7 @@ namespace BonDriver_Manager
 		/// 2. 完成与EpgDataCap_Bon的联动，创建DLL动作完成后打开EDCB进行搜台操作
 		/// 3. 完成ChSet4频道列表的导入
 		/// </summary>
-		public static void AddBonDriver_LoadMenu02()
+		static void AddBonDriver_LoadMenu02()
 		{
 			Console.Write("请输入BonDriver所在地区：");
 			string newRegion = Console.ReadLine();
@@ -260,18 +240,18 @@ namespace BonDriver_Manager
 		/// TODO: 
 		/// 1. 将更改写入EpgTimerSrv.ini
 		/// </summary>
-		public static void RemoveBonDriverSrv_LoadMenu03()
+		static void RemoveUselessBonDriverSrv_LoadMenu03()
 		{
 			ushort i = 0;
 			int countB = bonDriverSrvs.Count;
-            bool IsDLLNull(BonDriverSrv b) { return b.driverDLL == null; }
-            bonDriverSrvs.RemoveAll(IsDLLNull);
+			bool IsDLLNull(BonDriverSrv b) { return b.driverDLL == null; }
+			bonDriverSrvs.RemoveAll(IsDLLNull);
 			int countA = bonDriverSrvs.Count;
 			foreach(BonDriverSrv b in bonDriverSrvs)
-            {
+			{
 				b.priority = i;
 				i++;
-            }
+			}
 			Console.WriteLine("本次共计移除了 " + (countB - countA) + "个条目");
 			Console.WriteLine("操作已完成03");
 			Console.ReadLine();
@@ -280,16 +260,138 @@ namespace BonDriver_Manager
 		/// <summary>
 		/// 加载BonDriverDLL类相关操作菜单
 		/// </summary>
-		/// <param name="b">待操作的BonD river DLL</param>
-		public static void LoadBonDriverControlMenu(BonDriverDLL b)
+		/// <param name="b_Srv">待编辑的BonDriverSrv实体</param>
+		static void LoadBonDriverControlMenu(BonDriverSrv b_Srv)
 		{
-			Console.WriteLine("00.\t新建BonDriver");
+			Console.Clear();
 			Console.WriteLine("01.\t编辑BonDriver_*.ini（IP以及TunerPath）");
 			Console.WriteLine("02.\t编辑EpgTimerSrv.ini（DLL排序以及EPG调用）");
 			Console.WriteLine("03.\t移动BonDriver使用顺序");
 			Console.WriteLine("04.\t删除BonDriver");
+			char key = Convert.ToChar(Console.ReadLine());
+			switch (key)
+			{
+				case '1':
+					{
+						EditBonDriver_Control01(b_Srv);
+						break;
+					}
+
+				case '2':
+					{
+						EditEpgTimerSrv_Control02();
+						break;
+					}
+
+				case '3':
+					{
+						///TODO
+						Restart();
+						break;
+					}
+				case '4':
+					{
+						///TODO
+						Restart();
+						break;
+					}
+			}
+		}
+		/// <summary>
+		/// 调用外部编辑器编辑BonDriver_*.ini
+		/// </summary>
+		/// <param name="b_Srv">待编辑的BonDriverSrv实体</param>
+		static void EditBonDriver_Control01(BonDriverSrv b_Srv)
+		{
+			var p = new Process();
+			p.StartInfo.FileName = "notepad.exe";
+			p.StartInfo.Arguments = "./BonDriver/" + b_Srv.fileName + ".ini";
+			p.Start();
+			int second = 0;
+			try
+			{
+				while (!p.WaitForExit(1000))
+				{
+					Console.Clear();
+					Console.WriteLine("正等待用户关闭编辑器..." + second + "秒");
+					second++;
+				}
+			}
+			catch(Exception ex)
+			{
+#if DEBUG
+				Console.WriteLine("程序出现异常\r\n" + ex.Message);
+#else
+				Console.WriteLine("程序出现异常");
+#endif
+			}
+			Console.WriteLine("编辑器已退出程序即将重载...");
+			Console.ReadLine();
+			Restart();
+		}
+		/// <summary>
+		/// 调用外部编辑器编辑EpgTimerSrv.ini
+		/// </summary>
+		static void EditEpgTimerSrv_Control02()
+		{
+			var p = new Process();
+			p.StartInfo.FileName = "notepad.exe";
+			p.StartInfo.Arguments = "./EpgTimerSrv.ini";
+			p.Start();
+			int second = 0;
+			try
+			{
+				while (!p.WaitForExit(1000))
+				{
+					Console.Clear();
+					Console.WriteLine("正等待用户关闭编辑器..." + second + "秒");
+					second++;
+				}
+			}
+			catch (Exception ex)
+			{
+#if DEBUG
+				Console.WriteLine("程序出现异常\r\n" + ex.Message);
+#else
+				Console.WriteLine("程序出现异常");
+#endif
+			}
+			Console.WriteLine("编辑器已退出程序即将重载...");
+			Console.ReadLine();
+			Restart();
 		}
 
+		static void ShowBonDriverInfo(BonDriverSrv b_Srv)
+		{
+			Console.WriteLine(b_Srv.ToString());
+			if (b_Srv.driverDLL == null)
+			{
+				Console.WriteLine("[BonDriverDLL实体不存在]");
+			}
+			else
+			{
+				Console.WriteLine("====IP信息====");
+				Console.WriteLine(b_Srv.driverDLL.ToString());
+				if (b_Srv.driverDLL.chSet4 != null)
+				{
+					Console.WriteLine("==BonDriverDLL实体频道列表==", b_Srv.driverDLL.chSet4.chSet4FileName);
+					ushort channelCount = 0;
+					foreach (Channel c in b_Srv.driverDLL.chSet4.channels)
+					{
+						if (c.show)
+						{
+							Console.WriteLine(c.ToString());
+						}
+						channelCount++;
+					}
+					Console.WriteLine("BonDriver: " + b_Srv.fileName + "共有 " + channelCount + " 个频道");
+				}
+				else
+				{
+					Console.WriteLine("BonDriverDLL未搜台");
+				}
+			}
+		}
 #if DEBUG
 		public static readonly string name = "[DEBUG]二枚目BonDriver管理程序";
 #else
